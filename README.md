@@ -1,0 +1,1 @@
+# smartstore-product-name-app
