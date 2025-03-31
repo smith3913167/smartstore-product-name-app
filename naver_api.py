@@ -1,14 +1,11 @@
 import requests
 import streamlit as st
-from dotenv import load_dotenv
-import os
 
-# ✅ 로컬 실행 시 .env 파일에서 API 키 불러오기
-load_dotenv()
-client_id = st.secrets.get("NAVER_CLIENT_ID")
-client_secret = st.secrets.get("NAVER_CLIENT_SECRET")
+# Streamlit Cloud에서 secrets.toml 값 불러오기
+client_id = st.secrets["NAVER_CLIENT_ID"]
+client_secret = st.secrets["NAVER_CLIENT_SECRET"]
 
-# ✅ 연관 키워드 리스트 생성
+# 연관 키워드 생성
 def get_related_keywords(keyword):
     return [
         f"{keyword} 추천",
@@ -23,7 +20,7 @@ def get_related_keywords(keyword):
         f"{keyword} 정품"
     ]
 
-# ✅ 키워드별 검색량 데이터 요청 함수
+# 키워드별 검색량 분석
 def get_keyword_data(keyword):
     url = "https://openapi.naver.com/v1/datalab/search"
     headers = {
@@ -33,17 +30,12 @@ def get_keyword_data(keyword):
     }
 
     body = {
-        "startDate": "2024-03-01",
-        "endDate": "2025-03-01",
+        "startDate": "2024-02-01",
+        "endDate": "2025-02-01",
         "timeUnit": "month",
-        "keywordGroups": [
-            {
-                "groupName": keyword,
-                "keywords": [keyword]
-            }
-        ],
-        "device": "all"  # PC + 모바일 포함
-        # gender와 ages는 전체 대상으로 생략
+        "keywordGroups": [{"groupName": keyword, "keywords": [keyword]}],
+        "device": "all",
+        "gender": ""
     }
 
     try:
@@ -51,13 +43,15 @@ def get_keyword_data(keyword):
         response.raise_for_status()
         data = response.json()
 
-        # ✅ 디버깅용 전체 응답 출력
-        st.write(f"🔍 [DEBUG] '{keyword}' 응답:", data)
-
+        # 검색결과 없을 때
         if "results" in data and data["results"][0].get("data") == []:
-            st.warning(f"❗ '{keyword}'에 대한 검색 결과가 없습니다.")
+            st.warning(f"🔍 '{keyword}'에 대한 검색 결과가 없습니다.")
         return data
 
-    except requests.exceptions.RequestException as e:
-        st.error(f"❌ [API 오류] '{keyword}' 요청 실패: {e}")
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"❌ [API 오류] '{keyword}' 요청 실패: {http_err}")
+        return {}
+
+    except Exception as e:
+        st.error(f"❌ [예상치 못한 오류] '{keyword}': {e}")
         return {}
