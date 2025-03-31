@@ -4,45 +4,69 @@ from keyword_analyzer import analyze_keywords
 from weighted_product_name_generator import generate_weighted_ranked_product_names
 from save_to_excel import save_to_excel
 
+# 페이지 설정
 st.set_page_config(
-    page_title="스마트스토어 상품명 최적화 도우미",
-    layout="centered"
+    page_title="스마트스토어 상품명 최적화",
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-st.title("🛍️ 네이버 스마트스토어 상품명 최적화 도우미")
-st.markdown("🔍 키워드 기반 검색량, 경쟁 강도 분석을 통해 최적의 상품명을 추천합니다.")
+# ------------------- HEADER -------------------
+st.markdown("""
+    <style>
+        .main-title {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #262730;
+            text-align: center;
+            padding: 10px 0;
+        }
+        .sub-header {
+            font-size: 1.2em;
+            color: #555;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# 1. 키워드 입력
-main_keyword = st.text_input("분석할 키워드를 입력하세요 (예: 무선 충전기, 감성 랜턴 등)")
+st.markdown('<div class="main-title">🛒 스마트스토어 상품명 최적화 도우미</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">키워드 분석 + 경쟁 강도 기반 추천 상품명을 생성합니다.</div>', unsafe_allow_html=True)
 
-if st.button("🚀 키워드 분석 시작") and main_keyword.strip():
+# ------------------- INPUT -------------------
+st.markdown("### 🔍 키워드 입력")
+main_keyword = st.text_input("예: 무선 충전기, 감성 랜턴, 미니 선풍기 등")
+
+# ------------------- 실행 버튼 -------------------
+if st.button("📊 분석 시작") and main_keyword.strip():
     with st.spinner("분석 중입니다..."):
-        # 2. 키워드 분석
         df = analyze_keywords(main_keyword)
 
-        # 3. 결과 시각화
         if not df.empty:
-            st.success("✅ 키워드 분석 완료!")
-            st.subheader("📊 키워드 분석 결과")
-            st.dataframe(df, use_container_width=True)
+            st.success("✅ 키워드 분석이 완료되었습니다!")
 
-            # 4. 추천 상품명 생성
+            # ------------------- 분석 결과 -------------------
+            st.markdown("### 📈 키워드 분석 결과")
+            st.dataframe(df.style.format({"월간 검색량(합산)": "{:,}"}), use_container_width=True)
+
+            # ------------------- 추천 상품명 -------------------
             suggestions = generate_weighted_ranked_product_names(df)
 
             if suggestions:
-                st.subheader("📌 추천 상품명 (가중치 기반)")
+                st.markdown("### 💡 추천 상품명")
                 for i, name in enumerate(suggestions, 1):
-                    st.markdown(f"{i}. {name}")
+                    st.markdown(f"<div style='font-size:1.1em; padding:4px 0;'>🔹 <b>{i}. {name}</b></div>", unsafe_allow_html=True)
 
-                # 5. 다운로드 버튼
-                excel_data = save_to_excel(df, suggestions)
+                # ------------------- 다운로드 -------------------
+                st.markdown("---")
+                excel_file = save_to_excel(df, suggestions)
                 st.download_button(
-                    label="📥 결과 다운로드 (Excel)",
-                    data=excel_data,
-                    file_name="keyword_analysis.xlsx",
+                    label="📥 Excel로 저장하기",
+                    data=excel_file,
+                    file_name="상품명_키워드분석.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
-                st.warning("❗ 추천할 상품명이 없습니다. 키워드를 다시 입력해 주세요.")
+                st.warning("⚠️ 유효한 추천 상품명이 생성되지 않았습니다.")
         else:
-            st.error("❗ 키워드 분석 결과가 없습니다. 유효한 키워드를 입력해 주세요.")
+            st.error("❗ 분석 결과가 없습니다. 다른 키워드를 입력해 보세요.")
