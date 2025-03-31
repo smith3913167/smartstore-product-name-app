@@ -5,8 +5,8 @@ import os
 
 # ✅ 로컬 실행 시 .env 파일에서 API 키 불러오기
 load_dotenv()
-client_id = st.secrets.get("NAVER_CLIENT_ID") or os.getenv("NAVER_CLIENT_ID")
-client_secret = st.secrets.get("NAVER_CLIENT_SECRET") or os.getenv("NAVER_CLIENT_SECRET")
+client_id = st.secrets.get("NAVER_CLIENT_ID")
+client_secret = st.secrets.get("NAVER_CLIENT_SECRET")
 
 # ✅ 연관 키워드 리스트 생성
 def get_related_keywords(keyword):
