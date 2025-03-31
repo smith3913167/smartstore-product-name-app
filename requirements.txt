@@ -1,5 +1,1 @@
-streamlit
-pandas
-openpyxl
-requests
-python-dotenv
+# Placeholder for requirements.txt
