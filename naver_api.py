@@ -9,7 +9,6 @@ client_id = st.secrets["NAVER_CLIENT_ID"]
 client_secret = st.secrets["NAVER_CLIENT_SECRET"]
 
 def get_related_keywords(keyword):
-    # 예시 연관 키워드 10개
     return [
         f"{keyword} 추천",
         f"{keyword} 인기",
@@ -37,13 +36,19 @@ def get_keyword_data(keyword):
         "timeUnit": "month",
         "keywordGroups": [{"groupName": keyword, "keywords": [keyword]}],
         "device": "pc",
-        "ages": ["2", "3", "4"],  # ✅ 정확한 연령코드로 수정!
-        "gender": ""
+        "ages": ["20", "30", "40", "50"],  # ✅ 연령대 코드 수정
+        "gender": ""  # or "m" / "f"
     }
 
     try:
         response = requests.post(url, headers=headers, json=body)
-        return response.json()
+        result = response.json()
+
+        # ✅ 예외 확인 및 로깅
+        if 'results' not in result or not result['results'][0]['data']:
+            st.warning(f"'{keyword}'에 대한 검색 결과가 없습니다.")
+        return result
+
     except Exception as e:
-        print(f"❌ [API 오류] 키워드 '{keyword}' 요청 중 에러 발생: {e}")
+        st.error(f"❌ [API 에러] 키워드 '{keyword}' 검색 중 오류 발생: {e}")
         return {}
