@@ -29,7 +29,7 @@ if st.button("분석 시작") and keyword:
             # 알고리즘 기반 추천 상품명 생성
             suggestions = generate_weighted_ranked_product_names(df)
 
-            if suggestions:
+            if suggestions is not None and isinstance(suggestions, list) and len(suggestions) > 0:
                 st.markdown("### 🧠 추천 상품명 (우선순위 순)")
                 for i, name in enumerate(suggestions, 1):
                     st.write(f"{i}. {name}")
