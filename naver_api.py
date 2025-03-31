@@ -1,12 +1,12 @@
 import requests
-import os
+import streamlit as st
 from dotenv import load_dotenv
 
 # .env 파일에서 API 키 불러오기
 load_dotenv()
 
-client_id = os.getenv("k1vdVgqWhvnp_SYgIjOS")
-client_secret = os.getenv("mSzXgxb1d_")
+client_id = st.secrets["NAVER_CLIENT_ID"]
+client_secret = st.secrets["NAVER_CLIENT_SECRET"]
 
 def get_related_keywords(keyword):
     # 예시 연관 키워드 10개
