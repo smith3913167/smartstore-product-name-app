@@ -4,9 +4,10 @@ import json
 import streamlit as st
 
 BASE_URL = "https://api.naver.com"
-API_KEY = st.secrets["NAVER_API_KEY"]
-SECRET_KEY = st.secrets["NAVER_SECRET_KEY"]
-CUSTOMER_ID = st.secrets["NAVER_CUSTOMER_ID"]
+
+API_KEY = st.secrets["NAVER_AD_API_KEY"]       # ✅ 검색광고 API 키
+SECRET_KEY = st.secrets["NAVER_AD_SECRET_KEY"] # ✅ 검색광고 Secret
+CUSTOMER_ID = st.secrets["NAVER_CUSTOMER_ID"]  # ✅ 고객 ID
 
 HEADERS = {
     "X-API-KEY": API_KEY,
