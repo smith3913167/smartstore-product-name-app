@@ -33,7 +33,7 @@ if st.button("📊 키워드 분석 및 상품명 추천 시작") and main_keywo
 
         if df is not None and not df.empty:
             # 2. 상품명 추천
-            suggestions = generate_weighted_ranked_product_names(df)
+            suggestions = generate_weighted_ranked_product_names(df, main_keyword)
 
             # 3. 결과 출력
             st.subheader("📈 키워드 분석 결과")
