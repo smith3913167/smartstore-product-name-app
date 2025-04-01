@@ -1,41 +1,33 @@
 import pandas as pd
 from naver_ad_api import get_related_keywords
 
-def to_int(value):
-    try:
-        if isinstance(value, str) and "<" in value:
-            return 0
-        return int(value)
-    except:
-        return 0
-
-def to_float(value):
-    try:
-        if value == "높음":
-            return 1.0
-        elif value == "중간":
-            return 0.5
-        elif value == "낮음":
-            return 0.1
-        return float(value)
-    except:
-        return 0.0
-
 def analyze_keywords(main_keyword):
     raw_keywords = get_related_keywords(main_keyword)
-
+    
+    related_keywords = []
     data = []
+
     for keyword_info in raw_keywords:
         try:
             keyword = keyword_info.get("relKeyword", keyword_info.get("keyword"))
-            monthly_pc = to_int(keyword_info.get("monthlyPcQcCnt", 0))
-            monthly_mobile = to_int(keyword_info.get("monthlyMobileQcCnt", 0))
+            related_keywords.append(keyword)
+
+            monthly_pc = int(keyword_info.get("monthlyPcQcCnt", 0).replace(",", ""))
+            monthly_mobile = int(keyword_info.get("monthlyMobileQcCnt", 0).replace(",", ""))
             total_search = monthly_pc + monthly_mobile
 
-            comp_idx = to_float(keyword_info.get("compIdx", 0))  # 경쟁도 (문자 → 숫자)
-            ad_price = to_int(keyword_info.get("bidAmt", 0))
-            product_count = to_int(keyword_info.get("productCount", 0))
-            avg_price = to_int(keyword_info.get("avgPrice", 0))
+            comp_idx_raw = keyword_info.get("compIdx", "0")
+            if comp_idx_raw in ["높음", "중간", "낮음"]:
+                comp_map = {"낮음": 0.2, "중간": 0.5, "높음": 0.8}
+                comp_idx = comp_map.get(comp_idx_raw, 0.5)
+            else:
+                comp_idx = float(comp_idx_raw)
+
+            bid_amt_raw = keyword_info.get("bidAmt", "0")
+            ad_price = 0 if bid_amt_raw in ["-", "< 10", None] else int(str(bid_amt_raw).replace(",", "").replace("< 10", "10"))
+
+            product_count = int(str(keyword_info.get("productCount", 0)).replace(",", "").replace("< 10", "10"))
+            avg_price = int(str(keyword_info.get("avgPrice", 0)).replace(",", "").replace("< 10", "10"))
 
             score = (
                 (total_search / 1000) * 0.4 +
@@ -53,8 +45,9 @@ def analyze_keywords(main_keyword):
                 "광고비": ad_price,
                 "상품수": product_count,
                 "평균가": avg_price,
-                "종합 점수": round(score, 2),
+                "종합 점수": round(score, 2)
             })
+
         except Exception as e:
             print(f"❌ 데이터 처리 오류: {e}")
             continue
@@ -66,4 +59,4 @@ def analyze_keywords(main_keyword):
     else:
         print("❌ '종합 점수' 컬럼이 없습니다.")
 
-    return df
+    return df, related_keywords
