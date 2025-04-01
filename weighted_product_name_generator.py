@@ -6,8 +6,8 @@ def generate_weighted_ranked_product_names(df, main_keyword):
     for _, row in df.iterrows():
         keyword = row["키워드"]
         score = row["종합 점수"]
-        bid = row["광고비용"]
-        avg_price = row["평균가"]
+        bid = row["광고 입찰가"]
+        avg_price = row["평균 가격"]
 
         # 조합 요소 추출
         ad_tag = "인기" if bid > 100 else "가성비"
