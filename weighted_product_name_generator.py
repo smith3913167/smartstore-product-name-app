@@ -1,25 +1,32 @@
-def generate_weighted_ranked_product_names(df):
+import random
+
+def generate_weighted_ranked_product_names(df, main_keyword):
     suggestions = []
 
     for _, row in df.iterrows():
         keyword = row["키워드"]
-        volume = row.get("월간 검색량(합산)", 0)
-        competition_score = row.get("경쟁강도 점수", 0)
-        ad_cost = row.get("광고비", 0)
-        product_count = row.get("상품수", 0)
+        score = row["종합 점수"]
+        bid = row["광고비용"]
+        avg_price = row["평균가"]
 
-        # 가중치 기반 점수 계산 (높을수록 유리한 방향)
-        score = (
-            (volume * 0.4) +               # 검색량
-            (ad_cost * 0.3) +             # 광고비 (높을수록 인기)
-            ((1 / (product_count + 1)) * 10000 * 0.2) +  # 상품 수 적을수록 유리
-            ((1 / (competition_score + 1)) * 100 * 0.1)  # 경쟁강도 낮을수록 유리
-        )
+        # 조합 요소 추출
+        ad_tag = "인기" if bid > 100 else "가성비"
+        price_tag = f"{avg_price//1000}천원대" if avg_price else "특가"
+        base_name = f"{main_keyword} {keyword} {ad_tag} {price_tag}"
 
-        suggestions.append((keyword, score))
+        # 랜덤 요소 추가
+        suffix = random.choice(["추천", "TOP", "BEST", "정품", "브랜드"])
+        full_name = f"{base_name} {suffix}"
 
-    # 점수 기준 정렬
-    ranked = sorted(suggestions, key=lambda x: x[1], reverse=True)
+        suggestions.append({
+            "추천 상품명": full_name,
+            "가중치 점수": round(score, 2),
+            "연관 키워드": keyword,
+            "광고비용": bid,
+            "평균가": avg_price
+        })
 
-    # 상위 10개 상품명 반환
-    return [kw for kw, _ in ranked[:10]]
+    # 종합 점수 기준 정렬 후 반환
+    suggestions = sorted(suggestions, key=lambda x: x["가중치 점수"], reverse=True)
+
+    return suggestions
