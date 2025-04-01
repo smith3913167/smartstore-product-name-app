@@ -1,4 +1,3 @@
-# naver_ad_api.py
 import requests
 import streamlit as st
 import time
@@ -22,7 +21,7 @@ def generate_signature(timestamp, method, uri, secret_key):
     ).digest()
     return base64.b64encode(signature).decode()
 
-# 🔍 연관 키워드 + 통계 데이터 반환
+# 🔍 연관 키워드 + 상세 데이터 요청 함수
 def get_related_keywords(keyword):
     uri = "/keywordstool"
     method = "GET"
@@ -43,16 +42,21 @@ def get_related_keywords(keyword):
 
     try:
         response = requests.get(BASE_URL + uri, headers=headers, params=params)
+
+        # ✅ 인코딩 오류 방지: 강제로 UTF-8 설정
+        response.encoding = 'utf-8'
+
         data = response.json()
 
         if "keywordList" in data:
-            return data["keywordList"]  # ✅ 전체 키워드 데이터 객체 반환
+            return data["keywordList"]
         else:
             st.warning("검색 광고 API에서 키워드를 찾을 수 없습니다.")
             return []
     except Exception as e:
         try:
-            st.error(f"검색 광고 API 요청 실패: {response.content.decode('utf-8', errors='replace')}")
+            error_message = response.content.decode("utf-8", errors="replace")
         except:
-            st.error(f"검색 광고 API 요청 실패: {str(e)}")
+            error_message = str(e)
+        st.error(f"검색 광고 API 요청 실패: {error_message}")
         return []
