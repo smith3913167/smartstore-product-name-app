@@ -1,62 +1,57 @@
+import requests
 import pandas as pd
-from naver_ad_api import get_related_keywords
+from urllib.parse import quote
+import streamlit as st
 
 def analyze_keywords(main_keyword):
-    raw_keywords = get_related_keywords(main_keyword)
-    
-    related_keywords = []
-    data = []
+    try:
+        encoded_keyword = quote(main_keyword, encoding='utf-8')
 
-    for keyword_info in raw_keywords:
-        try:
-            keyword = keyword_info.get("relKeyword", keyword_info.get("keyword"))
-            related_keywords.append(keyword)
+        api_url = f"https://api.naver.com/keywordstool?hintKeywords={encoded_keyword}&showDetail=1"
 
-            monthly_pc = int(keyword_info.get("monthlyPcQcCnt", 0).replace(",", ""))
-            monthly_mobile = int(keyword_info.get("monthlyMobileQcCnt", 0).replace(",", ""))
-            total_search = monthly_pc + monthly_mobile
+        headers = {
+            "X-API-KEY": st.secrets["NAVER_API_KEY"],
+            "Content-Type": "application/json",
+        }
 
-            comp_idx_raw = keyword_info.get("compIdx", "0")
-            if comp_idx_raw in ["높음", "중간", "낮음"]:
-                comp_map = {"낮음": 0.2, "중간": 0.5, "높음": 0.8}
-                comp_idx = comp_map.get(comp_idx_raw, 0.5)
-            else:
-                comp_idx = float(comp_idx_raw)
+        response = requests.get(api_url, headers=headers)
+        response.encoding = 'utf-8'  # Ensure UTF-8 decoding
 
-            bid_amt_raw = keyword_info.get("bidAmt", "0")
-            ad_price = 0 if bid_amt_raw in ["-", "< 10", None] else int(str(bid_amt_raw).replace(",", "").replace("< 10", "10"))
+        if response.status_code != 200:
+            st.error(f"❌ 검색 광고 API 요청 실패: {response.text}")
+            return None, []
 
-            product_count = int(str(keyword_info.get("productCount", 0)).replace(",", "").replace("< 10", "10"))
-            avg_price = int(str(keyword_info.get("avgPrice", 0)).replace(",", "").replace("< 10", "10"))
+        data = response.json()
 
-            score = (
-                (total_search / 1000) * 0.4 +
-                (1 - comp_idx) * 100 * 0.3 +
-                (1 / (product_count + 1)) * 10000 * 0.2 +
-                (1 / (avg_price + 1)) * 100000 * 0.1
-            )
+        # 결과 정리
+        keywords_data = data.get("keywordList", [])
 
-            data.append({
-                "키워드": keyword,
-                "PC 검색량": monthly_pc,
-                "모바일 검색량": monthly_mobile,
-                "총 검색량": total_search,
-                "경쟁도": comp_idx,
-                "광고비": ad_price,
-                "상품수": product_count,
-                "평균가": avg_price,
-                "종합 점수": round(score, 2)
-            })
+        if not keywords_data:
+            return None, []
 
-        except Exception as e:
-            print(f"❌ 데이터 처리 오류: {e}")
-            continue
+        df = pd.DataFrame(keywords_data)
 
-    df = pd.DataFrame(data)
+        # 컬럼명 정리 (샘플용 가공)
+        df = df.rename(columns={
+            "relKeyword": "키워드",
+            "monthlyPcQcCnt": "검색량",
+            "compIdx": "경쟁 강도",
+            "monthlyAvePcCtr": "평균 CTR",
+            "monthlyAvePcCpc": "광고비",
+            "productCnt": "상품수",
+        })
 
-    if "종합 점수" in df.columns:
-        df = df.sort_values("종합 점수", ascending=False).reset_index(drop=True)
-    else:
-        print("❌ '종합 점수' 컬럼이 없습니다.")
+        # 관련 키워드 추출
+        related_keywords = df["키워드"].tolist()[:10]  # 상위 10개만
 
-    return df, related_keywords
+        # 수치형 컬럼 변환
+        for col in ["검색량", "광고비", "상품수"]:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        df = df.fillna(0)
+
+        return df, related_keywords
+
+    except Exception as e:
+        st.error(f"❌ 키워드 분석 중 오류 발생: {e}")
+        return None, []
