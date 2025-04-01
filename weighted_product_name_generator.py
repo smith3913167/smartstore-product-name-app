@@ -1,29 +1,25 @@
-import random
+import pandas as pd
 
 def generate_weighted_ranked_product_names(df, main_keyword):
     suggestions = []
-    
-    prefixes = ["프리미엄", "고급형", "감성", "베스트", "핫한"]
-    suffixes = ["추천", "세트", "구성", "컬렉션", "신상"]
 
     for _, row in df.iterrows():
         keyword = row["키워드"]
-        score = row["종합 점수"]
+        bid = row.get("광고비", 0)
+        avg_price = row.get("평균가", 0)
 
-        prefix = random.choice(prefixes)
-        suffix = random.choice(suffixes)
+        name = f"{main_keyword} {keyword}"
+        if bid > 300:
+            name += " 프리미엄"
+        elif avg_price < 10000:
+            name += " 가성비"
 
-        product_name = f"{prefix} {keyword} {suffix}"
         suggestions.append({
-            "추천 상품명": product_name,
-            "기준 키워드": keyword,
-            "종합 점수": score
+            "추천 상품명": name,
+            "연관 키워드": keyword,
+            "광고비": bid,
+            "평균가": avg_price,
+            "점수": row["종합 점수"]
         })
 
-    suggestion_df = (
-        pd.DataFrame(suggestions)
-        .sort_values("종합 점수", ascending=False)
-        .reset_index(drop=True)
-    )
-
-    return suggestion_df
+    return pd.DataFrame(suggestions).sort_values("점수", ascending=False).reset_index(drop=True)
