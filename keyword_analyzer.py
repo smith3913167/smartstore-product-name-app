@@ -5,25 +5,28 @@ import streamlit as st
 
 def analyze_keywords(main_keyword):
     try:
+        client_id = st.secrets["NAVER_API_KEY"]
+        client_secret = st.secrets["NAVER_API_SECRET"]
+
         encoded_keyword = quote(main_keyword, encoding='utf-8')
 
+        # 예: 검색광고 API 예시 URL
         api_url = f"https://api.naver.com/keywordstool?hintKeywords={encoded_keyword}&showDetail=1"
 
         headers = {
-            "X-API-KEY": st.secrets["NAVER_API_KEY"],
+            "X-Naver-Client-Id": client_id,
+            "X-Naver-Client-Secret": client_secret,
             "Content-Type": "application/json",
         }
 
         response = requests.get(api_url, headers=headers)
-        response.encoding = 'utf-8'  # Ensure UTF-8 decoding
+        response.encoding = 'utf-8'
 
         if response.status_code != 200:
             st.error(f"❌ 검색 광고 API 요청 실패: {response.text}")
             return None, []
 
         data = response.json()
-
-        # 결과 정리
         keywords_data = data.get("keywordList", [])
 
         if not keywords_data:
@@ -31,7 +34,7 @@ def analyze_keywords(main_keyword):
 
         df = pd.DataFrame(keywords_data)
 
-        # 컬럼명 정리 (샘플용 가공)
+        # 컬럼명 정리
         df = df.rename(columns={
             "relKeyword": "키워드",
             "monthlyPcQcCnt": "검색량",
@@ -41,10 +44,9 @@ def analyze_keywords(main_keyword):
             "productCnt": "상품수",
         })
 
-        # 관련 키워드 추출
-        related_keywords = df["키워드"].tolist()[:10]  # 상위 10개만
+        related_keywords = df["키워드"].tolist()[:10]  # 상위 10개 추출
 
-        # 수치형 컬럼 변환
+        # 수치형 변환
         for col in ["검색량", "광고비", "상품수"]:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
@@ -52,6 +54,9 @@ def analyze_keywords(main_keyword):
 
         return df, related_keywords
 
+    except KeyError as ke:
+        st.error(f"❌ secrets.toml에 '{ke}' 값이 누락되었습니다.")
+        return None, []
     except Exception as e:
         st.error(f"❌ 키워드 분석 중 오류 발생: {e}")
         return None, []
