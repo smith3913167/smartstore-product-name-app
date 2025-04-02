@@ -34,12 +34,8 @@ def analyze_keywords(main_keyword):
             "Content-Type": "application/json",
         }
 
-        # ✅ 핵심 수정: json=body
+        # ✅ 핵심: json=body로 보내야 인코딩 오류 없음
         response = requests.post(full_url, headers=headers, json=body)
-        response.encoding = 'utf-8'
-
-        st.write("📦 API Status:", response.status_code)
-        st.write("📦 응답 JSON:", response.text)
 
         if response.status_code != 200:
             st.error(f"❌ 검색 광고 API 요청 실패: {response.text}")
@@ -49,7 +45,6 @@ def analyze_keywords(main_keyword):
         keywords_data = data.get("keywordList", [])
 
         if not keywords_data:
-            st.warning("❗ 연관 키워드를 찾을 수 없습니다.")
             return None, []
 
         df = pd.DataFrame(keywords_data)
