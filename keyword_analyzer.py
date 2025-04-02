@@ -1,21 +1,42 @@
 import requests
 import pandas as pd
-from urllib.parse import quote
 import streamlit as st
+import time
+import hmac
+import hashlib
+import base64
+from urllib.parse import quote
+
+def generate_signature(timestamp, method, uri, secret_key):
+    message = f"{timestamp}.{method}.{uri}"
+    signing_key = bytes(secret_key, 'utf-8')
+    message = bytes(message, 'utf-8')
+    hashed = hmac.new(signing_key, message, hashlib.sha256)
+    return base64.b64encode(hashed.digest()).decode()
 
 def analyze_keywords(main_keyword):
     try:
         encoded_keyword = quote(main_keyword, encoding='utf-8')
+        uri = f"/keywordstool"
+        full_url = f"https://api.naver.com{uri}?hintKeywords={encoded_keyword}&showDetail=1"
 
-        api_url = f"https://api.naver.com/keywordstool?hintKeywords={encoded_keyword}&showDetail=1"
+        timestamp = str(int(time.time() * 1000))
+        method = "GET"
+        secret_key = st.secrets["NAVER_AD_SECRET_KEY"]
+        api_key = st.secrets["NAVER_AD_API_KEY"]
+        customer_id = st.secrets["NAVER_CUSTOMER_ID"]
+
+        signature = generate_signature(timestamp, method, uri, secret_key)
 
         headers = {
-            "X-API-KEY": st.secrets["NAVER_AD_API_KEY"],  # 수정된 부분
-            "Content-Type": "application/json",
-            "customerId": st.secrets["NAVER_CUSTOMER_ID"],  # 검색광고에선 보통 필요
+            "X-Timestamp": timestamp,
+            "X-API-KEY": api_key,
+            "X-Customer": customer_id,
+            "X-Signature": signature,
+            "Content-Type": "application/json"
         }
 
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(full_url, headers=headers)
         response.encoding = 'utf-8'
 
         if response.status_code != 200:
@@ -24,15 +45,12 @@ def analyze_keywords(main_keyword):
 
         data = response.json()
 
-        # 키워드 데이터 추출
         keywords_data = data.get("keywordList", [])
-
         if not keywords_data:
             return None, []
 
         df = pd.DataFrame(keywords_data)
 
-        # 컬럼명 변환
         df = df.rename(columns={
             "relKeyword": "키워드",
             "monthlyPcQcCnt": "검색량",
@@ -42,10 +60,8 @@ def analyze_keywords(main_keyword):
             "productCnt": "상품수",
         })
 
-        # 연관 키워드 상위 10개 추출
         related_keywords = df["키워드"].tolist()[:10]
 
-        # 수치형 처리
         for col in ["검색량", "광고비", "상품수"]:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
