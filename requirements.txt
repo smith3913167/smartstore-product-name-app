@@ -1,5 +1,7 @@
 streamlit
 pandas
-openpyxl
-python-dotenv
+numpy
 requests
+openpyxl
+matplotlib
+seaborn
