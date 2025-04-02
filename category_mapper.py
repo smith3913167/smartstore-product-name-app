@@ -1,29 +1,19 @@
-import requests
-import streamlit as st
+# category_mapper.py
 
-def get_category_for_keyword(keyword: str) -> str:
+def map_keyword_to_categories(keyword):
     """
-    입력된 키워드에 대해 스마트스토어의 대표 카테고리를 반환합니다.
-    실제 데이터 기반이 아니라 샘플용 API or 예측 방식으로 구현.
+    간단한 키워드 기반 카테고리 추론 함수 (실제 스마트스토어 데이터 기반 아님, 샘플 로직)
+    향후 실제 네이버 카테고리 매핑 로직이나 DB 연동으로 개선 가능
     """
-    try:
-        # Naver 검색어 자동완성 기반 카테고리 예측 (실제 API 사용시 대체 필요)
-        url = f"https://search.shopping.naver.com/api/search/category?query={keyword}"
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-        }
-        response = requests.get(url, headers=headers, timeout=5)
-
-        if response.status_code == 200:
-            result = response.json()
-
-            # 구조에 따라 파싱 (샘플 기준)
-            if "category" in result and result["category"]:
-                return result["category"][0].get("name", "카테고리 정보 없음")
-            else:
-                return "카테고리 정보 없음"
-        else:
-            return f"카테고리 조회 실패 (code: {response.status_code})"
-    except Exception as e:
-        st.warning(f"카테고리 분석 중 오류 발생: {e}")
-        return "카테고리 정보 없음"
+    keyword = keyword.lower()
+    
+    if "선풍기" in keyword:
+        return ["가전 > 계절가전 > 선풍기", "가전 > 소형가전"]
+    elif "충전기" in keyword:
+        return ["디지털 > 스마트기기 > 충전기/케이블", "디지털 > 모바일기기"]
+    elif "멀티탭" in keyword:
+        return ["생활/주방 > 전기용품 > 멀티탭"]
+    elif "이어폰" in keyword:
+        return ["디지털 > 음향기기 > 이어폰", "디지털 > 모바일기기"]
+    else:
+        return ["기타"]
