@@ -1,27 +1,27 @@
-import requests
-import pandas as pd
-import streamlit as st
 import time
 import hmac
 import hashlib
 import base64
-from urllib.parse import quote
+import pandas as pd
+import requests
+import streamlit as st
 
 def generate_signature(timestamp, method, uri, secret_key):
     message = f"{timestamp}.{method}.{uri}"
-    signing_key = bytes(secret_key, 'utf-8')
-    message = bytes(message, 'utf-8')
-    hashed = hmac.new(signing_key, message, hashlib.sha256)
-    return base64.b64encode(hashed.digest()).decode()
+    signature = hmac.new(
+        bytes(secret_key, "utf-8"),
+        bytes(message, "utf-8"),
+        digestmod=hashlib.sha256
+    ).digest()
+    return base64.b64encode(signature).decode()
 
 def analyze_keywords(main_keyword):
     try:
-        encoded_keyword = quote(main_keyword, encoding='utf-8')
-        uri = f"/keywordstool"
-        full_url = f"https://api.naver.com{uri}?hintKeywords={encoded_keyword}&showDetail=1"
+        uri = "/keywordstool"
+        full_url = f"https://api.naver.com{uri}"
 
         timestamp = str(int(time.time() * 1000))
-        method = "GET"
+        method = "POST"
         secret_key = st.secrets["NAVER_AD_SECRET_KEY"]
         api_key = st.secrets["NAVER_AD_API_KEY"]
         customer_id = st.secrets["NAVER_CUSTOMER_ID"]
@@ -36,7 +36,12 @@ def analyze_keywords(main_keyword):
             "Content-Type": "application/json"
         }
 
-        response = requests.get(full_url, headers=headers)
+        body = {
+            "hintKeywords": [main_keyword],
+            "showDetail": 1
+        }
+
+        response = requests.post(full_url, headers=headers, json=body)
         response.encoding = 'utf-8'
 
         if response.status_code != 200:
@@ -44,7 +49,6 @@ def analyze_keywords(main_keyword):
             return None, []
 
         data = response.json()
-
         keywords_data = data.get("keywordList", [])
         if not keywords_data:
             return None, []
