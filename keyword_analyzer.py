@@ -1,41 +1,46 @@
 import requests
 import pandas as pd
-from urllib.parse import quote
+import json
 import streamlit as st
+from urllib.parse import quote
 
 def analyze_keywords(main_keyword):
     try:
+        # 검색 키워드 인코딩
         encoded_keyword = quote(main_keyword)
 
-        # 네이버 검색광고 API 엔드포인트 (POST 방식)
-        url = "https://api.searchad.naver.com/keywordstool"
-
-        headers = {
-            "X-API-KEY": st.secrets["NAVER_AD_API_KEY"],
-            "X-CUSTOMER": st.secrets["NAVER_CUSTOMER_ID"],
-            "Content-Type": "application/json; charset=UTF-8"
-        }
-
+        # 요청 데이터 생성
         payload = {
-            "hintKeywords": [main_keyword],
+            "hintKeywords": main_keyword,
             "showDetail": 1
         }
 
-        response = requests.post(url, headers=headers, json=payload)
-        response.encoding = 'utf-8'
+        headers = {
+            "X-API-KEY": st.secrets["NAVER_API_KEY"],
+            "Content-Type": "application/json; charset=utf-8"
+        }
 
+        # API 호출 (중요: data가 아닌 json으로 전달)
+        response = requests.post(
+            "https://api.naver.com/keywordstool",
+            headers=headers,
+            json=payload  # ← json 인자로 넘기면 자동으로 utf-8 인코딩됨
+        )
+
+        response.encoding = 'utf-8'
         if response.status_code != 200:
-            st.error(f"❌검색 광고 API 요청 실패: {response.text}")
+            st.error(f"❌ 검색 광고 API 요청 실패: {response.text}")
             return None, []
 
         data = response.json()
-        keyword_list = data.get("keywordList", [])
+        keywords_data = data.get("keywordList", [])
 
-        if not keyword_list:
+        if not keywords_data:
             return None, []
 
-        df = pd.DataFrame(keyword_list)
+        df = pd.DataFrame(keywords_data)
 
+        # 컬럼명 정리
         df = df.rename(columns={
             "relKeyword": "키워드",
             "monthlyPcQcCnt": "검색량",
@@ -45,14 +50,12 @@ def analyze_keywords(main_keyword):
             "productCnt": "상품수",
         })
 
-        # 숫자형 처리
+        # 숫자형 변환
         for col in ["검색량", "광고비", "상품수"]:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
         df = df.fillna(0)
-        df = df.sort_values(by="검색량", ascending=False)
-
-        related_keywords = df["키워드"].tolist()[1:11]  # 입력 키워드 제외
+        related_keywords = df["키워드"].tolist()[:10]
 
         return df, related_keywords
 
