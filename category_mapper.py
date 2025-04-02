@@ -1,19 +1,45 @@
-# category_mapper.py
+import requests
+import streamlit as st
 
 def map_keyword_to_categories(keyword):
-    """
-    간단한 키워드 기반 카테고리 추론 함수 (실제 스마트스토어 데이터 기반 아님, 샘플 로직)
-    향후 실제 네이버 카테고리 매핑 로직이나 DB 연동으로 개선 가능
-    """
-    keyword = keyword.lower()
-    
-    if "선풍기" in keyword:
-        return ["가전 > 계절가전 > 선풍기", "가전 > 소형가전"]
-    elif "충전기" in keyword:
-        return ["디지털 > 스마트기기 > 충전기/케이블", "디지털 > 모바일기기"]
-    elif "멀티탭" in keyword:
-        return ["생활/주방 > 전기용품 > 멀티탭"]
-    elif "이어폰" in keyword:
-        return ["디지털 > 음향기기 > 이어폰", "디지털 > 모바일기기"]
-    else:
-        return ["기타"]
+    try:
+        # 네이버 검색광고 API 설정
+        base_url = "https://api.naver.com"
+        endpoint = "/keywordstool"
+        url = f"{base_url}{endpoint}"
+
+        headers = {
+            "X-API-KEY": st.secrets["NAVER_AD_API_KEY"],
+            "Content-Type": "application/json",
+        }
+
+        params = {
+            "hintKeywords": keyword,
+            "showDetail": 1
+        }
+
+        response = requests.get(url, headers=headers, params=params)
+        response.encoding = 'utf-8'
+
+        if response.status_code != 200:
+            st.warning(f"카테고리 분석 API 요청 실패: {response.text}")
+            return ["카테고리 정보 없음"]
+
+        data = response.json()
+        keyword_list = data.get("keywordList", [])
+
+        if not keyword_list:
+            return ["카테고리 정보 없음"]
+
+        # 카테고리 필드를 추정 (여기서는 relKeyword 기준 예시)
+        categories = []
+        for kw in keyword_list:
+            rel_kw = kw.get("relKeyword")
+            if rel_kw and rel_kw != keyword:
+                categories.append(rel_kw)
+
+        return categories[:5] if categories else ["카테고리 정보 없음"]
+
+    except Exception as e:
+        st.error(f"카테고리 매핑 중 오류 발생: {e}")
+        return ["카테고리 정보 없음"]
