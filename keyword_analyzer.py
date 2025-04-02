@@ -10,25 +10,19 @@ import json
 
 def analyze_keywords(main_keyword):
     try:
-        # 요청 시간 설정 (timestamp는 ms 기준)
         timestamp = str(int(time.time() * 1000))
-
-        # 요청 URL 정보
         base_url = "https://api.naver.com"
         uri = "/keywordstool"
         full_url = base_url + uri
 
-        # 파라미터 구성
         body = {
             "hintKeywords": [main_keyword],
             "siteId": None,
             "biztpId": None,
         }
-        body_str = json.dumps(body)
 
-        # 시그니처 생성
         secret_key = bytes(st.secrets["NAVER_AD_SECRET_KEY"], 'utf-8')
-        message = f"{timestamp}.{uri}.{body_str}"
+        message = f"{timestamp}.{uri}.{json.dumps(body, ensure_ascii=False)}"
         signature = hmac.new(secret_key, message.encode('utf-8'), hashlib.sha256).digest()
         signature_base64 = base64.b64encode(signature).decode()
 
@@ -40,11 +34,10 @@ def analyze_keywords(main_keyword):
             "Content-Type": "application/json",
         }
 
-        # POST 요청
-        response = requests.post(full_url, headers=headers, data=body_str)
+        # ✅ 핵심 수정: json=body
+        response = requests.post(full_url, headers=headers, json=body)
         response.encoding = 'utf-8'
 
-        # ✅ 디버깅 출력
         st.write("📦 API Status:", response.status_code)
         st.write("📦 응답 JSON:", response.text)
 
@@ -70,12 +63,11 @@ def analyze_keywords(main_keyword):
             "productCnt": "상품수",
         })
 
-        # 관련 키워드
         related_keywords = df["키워드"].tolist()[:10]
 
-        # 수치형 처리
         for col in ["검색량", "광고비", "상품수"]:
             df[col] = pd.to_numeric(df[col], errors='coerce')
+
         df = df.fillna(0)
 
         return df, related_keywords
