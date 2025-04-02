@@ -1,66 +1,70 @@
-# category_mapper.py
+import requests
 import time
 import hmac
 import hashlib
 import base64
-import requests
-import json
-import pandas as pd
 import streamlit as st
 from urllib.parse import quote
 
-def get_signature(timestamp, method, uri, secret_key):
-    message = f"{timestamp}.{method}.{uri}"
-    signing_key = bytes(secret_key, 'utf-8')
-    message = bytes(message, 'utf-8')
-    signature = hmac.new(signing_key, message, digestmod=hashlib.sha256).digest()
-    return base64.b64encode(signature).decode()
 
-def map_keyword_to_categories(main_keyword):
+def generate_signature(timestamp, method, uri, secret_key):
+    message = f"{timestamp}.{method}.{uri}"
+    message_bytes = message.encode('utf-8')
+    signing_key = secret_key.encode('utf-8')
+    signature = hmac.new(signing_key, message_bytes, hashlib.sha256).digest()
+    return base64.b64encode(signature).decode('utf-8')
+
+
+def map_keyword_to_categories(keyword: str) -> list:
     try:
-        base_url = "https://api.naver.com"
-        uri = "/keywordstool"
-        method = "GET"
+        # Secrets from .streamlit/secrets.toml or Streamlit Cloud
+        api_key = st.secrets["NAVER_AD_API_KEY"]
+        secret_key = st.secrets["NAVER_AD_SECRET_KEY"]
+        customer_id = st.secrets["NAVER_CUSTOMER_ID"]
 
         timestamp = str(int(time.time() * 1000))
-        encoded_keyword = quote(main_keyword, encoding='utf-8')
-        params = f"hintKeywords={encoded_keyword}&showDetail=1"
-        url = f"{base_url}{uri}?{params}"
+        method = "GET"
+        uri = "/keywordstool"
+        encoded_keyword = quote(keyword, safe='')
 
-        signature = get_signature(
-            timestamp,
-            method,
-            uri,
-            st.secrets["NAVER_AD_SECRET_KEY"]
-        )
+        query = f"hintKeywords={encoded_keyword}&showDetail=1"
+        url = f"https://api.naver.com{uri}?{query}"
+
+        signature = generate_signature(timestamp, method, uri, secret_key)
 
         headers = {
             "X-Timestamp": timestamp,
-            "X-API-KEY": st.secrets["NAVER_AD_API_KEY"],
-            "X-Customer": st.secrets["NAVER_CUSTOMER_ID"],
+            "X-API-KEY": api_key,
+            "X-Customer": customer_id,
             "X-Signature": signature,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         response = requests.get(url, headers=headers)
+        response.encoding = 'utf-8'
 
         if response.status_code != 200:
-            st.error(f"❌ API 요청 실패: {response.text}")
+            st.error(f"❌ 카테고리 API 요청 실패: {response.text}")
             return []
 
         data = response.json()
+
+        # 연관 키워드 중 카테고리명 유추
         keywords_data = data.get("keywordList", [])
+        category_names = []
 
-        # 유사 키워드를 기반으로 카테고리 유추
-        categories = []
-        for item in keywords_data[:10]:
-            keyword = item.get("relKeyword")
-            if keyword:
-                # 예시로 유사 키워드 자체를 "카테고리 후보"로 반환
-                categories.append(keyword)
+        for item in keywords_data:
+            rel_keyword = item.get("relKeyword", "")
+            if ">" in rel_keyword or "카테고리" in rel_keyword:
+                category_names.append(rel_keyword)
+            elif keyword in rel_keyword:
+                category_names.append(rel_keyword)
 
-        return list(set(categories))  # 중복 제거
+        # 중복 제거 및 최대 5개 추출
+        unique_categories = list(set(category_names))[:5]
+
+        return unique_categories
 
     except Exception as e:
-        st.error(f"❌ 카테고리 추론 중 오류 발생: {e}")
+        st.error(f"❌ 카테고리 매핑 중 오류 발생: {e}")
         return []
