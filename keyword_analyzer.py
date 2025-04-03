@@ -18,10 +18,9 @@ def generate_signature(secret_key, timestamp, method, uri, body=""):
     ).digest()
     return base64.b64encode(signature).decode('utf-8')
 
-# 키워드 분석 함수
+# 키워드 분석 함수 (POST 방식, UTF-8 안전 인코딩 포함)
 def analyze_keywords(main_keyword):
     try:
-        encoded_keyword = quote(main_keyword, encoding='utf-8')
         uri = "/keywordstool"
         method = "POST"
         timestamp = str(int(time.time() * 1000))
@@ -49,7 +48,7 @@ def analyze_keywords(main_keyword):
         }
 
         url = f"https://api.searchad.naver.com{uri}"
-        response = requests.post(url, headers=headers, data=body_str.encode('utf-8'))
+        response = requests.post(url, headers=headers, data=body_str.encode("utf-8"))
 
         if response.status_code != 200:
             st.error(f"❌ 검색 광고 API 요청 실패: {response.text}")
@@ -72,13 +71,12 @@ def analyze_keywords(main_keyword):
             "productCnt": "상품수",
         })
 
-        related_keywords = df["키워드"].tolist()[:10]
+        related_keywords = df["키워드"].tolist()[:10]  # 상위 10개 연관 키워드
 
         for col in ["검색량", "광고비", "상품수"]:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
         df = df.fillna(0)
-
         return df, related_keywords
 
     except Exception as e:
